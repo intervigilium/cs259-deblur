@@ -1,0 +1,8 @@
+gcc -O3 -lm deblure.c
+./a.out M N P denoised_array_3D.bin deblurred_array_3D.bin
+
+M, N and P are the size of the 3 dimensions
+M<=181 
+N<=217
+P<=181
+
