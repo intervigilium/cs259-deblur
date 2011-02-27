@@ -1,7 +1,7 @@
 # Makefile
 
 GCC=gcc
-SRC=deblure.c
+SRC=deblur.c
 OUT=deblur
 
 PAPIDIR=/mnt/jc5/CS259/papi
