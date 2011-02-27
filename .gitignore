@@ -1,4 +1,4 @@
 *.bin
+*.out
 deblur
 count
-a.out
