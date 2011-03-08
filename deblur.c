@@ -45,10 +45,10 @@ void GaussianBlur(double *u, const int Size[3], double Ksigma)
 	double BoundaryScale = 1.0 / (1.0 - nu);
 	double PostScale = pow(nu / lambda, 3 * GAUSSIAN_NUMSTEPS);
 	int n[3];
-	int i;
+	int steps, i;
 	uEnd = u + PlaneStep * Size[2];
 
-	for (i = 0; i < GAUSSIAN_NUMSTEPS; i++) {
+	for (steps = 0; i < GAUSSIAN_NUMSTEPS; steps++) {
 		for (n[2] = 0, uPtr = u; n[2] < Size[2];
 		     ++n[2], uPtr += PlaneStep) {
 			uCopy = uPtr;
