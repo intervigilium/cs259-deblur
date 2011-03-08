@@ -179,11 +179,10 @@ static void riciandeconv3(double *u, const double *f, const int Size[3],
 
     /*** Main gradient descent loop ***/
 	for (Iter = 1; Iter <= NumIter; Iter++) {
-
 		/* Approximate g = 1/|grad u| */
-		for (n[2] = 1; n[2] < Size[2] - 1; ++n[2])
-			for (n[1] = 1; n[1] < Size[1] - 1; ++n[1])
-				for (n[0] = 1; n[0] < Size[0] - 1; ++n[0])
+		for (n[2] = 1; n[2] < Size[2] - 1; ++n[2]) {
+			for (n[1] = 1; n[1] < Size[1] - 1; ++n[1]) {
+				for (n[0] = 1; n[0] < Size[0] - 1; ++n[0]) {
 					g[CENTER] = 1.0 / sqrt(EPSILON
 							       + SQR(u[CENTER] -
 								     u[RIGHT])
@@ -197,10 +196,13 @@ static void riciandeconv3(double *u, const double *f, const int Size[3],
 								     u[ZOUT])
 							       + SQR(u[CENTER] -
 								     u[ZIN]));
+                }
+            }
+        }
 		memcpy(conv, u, NumEl * sizeof(double));
 		GaussianBlur(conv, Size, Ksigma);
-		for (n[2] = 0; n[2] < Size[2]; ++n[2])
-			for (n[1] = 0; n[1] < Size[1]; ++n[1])
+		for (n[2] = 0; n[2] < Size[2]; ++n[2]) {
+			for (n[1] = 0; n[1] < Size[1]; ++n[1]) {
 				for (n[0] = 0; n[0] < Size[0]; ++n[0]) {
 
 					/* Evaluate r = I1((K*u)f/sigma^2) / I0((K*u)f/sigma^2) with
@@ -212,11 +214,13 @@ static void riciandeconv3(double *u, const double *f, const int Size[3],
 						    r * (1.48937 + r)));
 					conv[CENTER] -= f[CENTER] * r;
 				}
+            }
+        }
 		GaussianBlur(conv, Size, Ksigma);
 
 		/* Update u by a sem-implict step */
-		for (n[2] = 1; n[2] < Size[2] - 1; n[2]++)
-			for (n[1] = 1; n[1] < Size[1] - 1; n[1]++)
+		for (n[2] = 1; n[2] < Size[2] - 1; n[2]++) {
+			for (n[1] = 1; n[1] < Size[1] - 1; n[1]++) {
 				for (n[0] = 1; n[0] < Size[0] - 1; n[0]++) {
 					u[CENTER] =
 					    (u[CENTER] +
@@ -232,7 +236,9 @@ static void riciandeconv3(double *u, const double *f, const int Size[3],
 						   g[DOWN] + g[UP] + g[ZOUT] +
 						   g[ZIN]));
 				}
-		printf("Iter: %d\n", Iter);
+            }
+        }
+		printf("Iteration: %d\n", Iter);
 	}
 
 	/* Free temporary arrays */
