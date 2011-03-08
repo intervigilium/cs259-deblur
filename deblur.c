@@ -44,11 +44,11 @@ void GaussianBlur(double *u, const int Size[3], double Ksigma)
 	    (1.0 + 2.0 * lambda - sqrt(1.0 + 4.0 * lambda)) / (2.0 * lambda);
 	double BoundaryScale = 1.0 / (1.0 - nu);
 	double PostScale = pow(nu / lambda, 3 * GAUSSIAN_NUMSTEPS);
-	int Step = GAUSSIAN_NUMSTEPS;
 	int n[3];
+	int i;
 	uEnd = u + PlaneStep * Size[2];
 
-	do {
+	for (i = 0; i < GAUSSIAN_NUMSTEPS; i++) {
 		for (n[2] = 0, uPtr = u; n[2] < Size[2];
 		     ++n[2], uPtr += PlaneStep) {
 			uCopy = uPtr;
@@ -101,39 +101,39 @@ void GaussianBlur(double *u, const int Size[3], double Ksigma)
 		n[0] = PlaneStep;
 		uPtr = u;
 
-		do {
+		for (i = 0; i < n[0]; i++) {
 			uPtr[0] *= BoundaryScale;
 			++uPtr;
-		} while (--n[0]);
+		}
 		for (n[2] = 1; n[2] < Size[2]; ++n[2]) {
 			n[0] = PlaneStep;
 
-			do {
+			for (i = 0; i < n[0]; i++) {
 				uPtr[0] += nu * uPtr[-PlaneStep];
 				++uPtr;
-			} while (--n[0]);
+			}
 		}
 
 		/* Filter in */
 		n[0] = PlaneStep;
 
-		do {
+		for (i = 0; i < PlaneStep; i++) {
 			--uPtr;
 			uPtr[0] *= BoundaryScale;
-		} while (--n[0]);
+		}
 		for (n[2] = Size[2] - 2; n[2] >= 0; --n[2]) {
 			n[0] = PlaneStep;
 
-			do {
+			for (i = 0; i < n[0]; i++) {
 				--uPtr;
 				uPtr[0] += nu * uPtr[PlaneStep];
-			} while (--n[0]);
+			}
 		}
-	} while (--Step);
+	}
 
-	do {
-		u[0] *= PostScale;
-	} while (++u < uEnd);
+	for (i = 0; i < Size[0] * Size[1] * Size[2]; i++) {
+		u[i] *= PostScale;
+	}
 }
 
 /* Method Parameters */
@@ -196,9 +196,9 @@ static void riciandeconv3(double *u, const double *f, const int Size[3],
 								     u[ZOUT])
 							       + SQR(u[CENTER] -
 								     u[ZIN]));
-                }
-            }
-        }
+				}
+			}
+		}
 		memcpy(conv, u, NumEl * sizeof(double));
 		GaussianBlur(conv, Size, Ksigma);
 		for (n[2] = 0; n[2] < Size[2]; ++n[2]) {
@@ -214,8 +214,8 @@ static void riciandeconv3(double *u, const double *f, const int Size[3],
 						    r * (1.48937 + r)));
 					conv[CENTER] -= f[CENTER] * r;
 				}
-            }
-        }
+			}
+		}
 		GaussianBlur(conv, Size, Ksigma);
 
 		/* Update u by a sem-implict step */
@@ -236,8 +236,8 @@ static void riciandeconv3(double *u, const double *f, const int Size[3],
 						   g[DOWN] + g[UP] + g[ZOUT] +
 						   g[ZIN]));
 				}
-            }
-        }
+			}
+		}
 		printf("Iteration: %d\n", Iter);
 	}
 
@@ -254,50 +254,50 @@ void usage()
 
 int main(int argc, char *argv[])
 {
-    int M, N, P, m, n, p;
-    int c;
-    FILE *inputfile, *outputfile;
-    double *f, *u;
-    unsigned batch_id = 0;
+	int M, N, P, m, n, p;
+	int c;
+	FILE *inputfile, *outputfile;
+	double *f, *u;
+	unsigned batch_id = 0;
 
 	if (argc < 11) {
-        usage();
+		usage();
 		exit(0);
 	}
 
-    while ((c = getopt(argc, argv, "vhm:n:p:i:o:b:")) != -1) {
-        switch (c) {
-        case 'v':
-        case 'h':
-        case '?':
-        default:
-            usage();
-            exit(0);
-        case 'm':
-            M = atoi(optarg);
-            break;
-        case 'n':
-            N = atoi(optarg);
-            break;
-        case 'p':
-            P = atoi(optarg);
-            break;
-        case 'i':
-            inputfile = fopen(optarg, "r");
-            break;
-        case 'o':
-            outputfile = fopen(optarg, "w");
-            break;
-        case 'b':
-            sscanf(optarg, "%u", &batch_id);
-            break;
-        }
-    }
+	while ((c = getopt(argc, argv, "vhm:n:p:i:o:b:")) != -1) {
+		switch (c) {
+		case 'v':
+		case 'h':
+		case '?':
+		default:
+			usage();
+			exit(0);
+		case 'm':
+			M = atoi(optarg);
+			break;
+		case 'n':
+			N = atoi(optarg);
+			break;
+		case 'p':
+			P = atoi(optarg);
+			break;
+		case 'i':
+			inputfile = fopen(optarg, "r");
+			break;
+		case 'o':
+			outputfile = fopen(optarg, "w");
+			break;
+		case 'b':
+			sscanf(optarg, "%u", &batch_id);
+			break;
+		}
+	}
 
-    if (M < 1 || N < 1 || P < 1 || !inputfile || !outputfile) {
-        usage();
-        exit(0);
-    }
+	if (M < 1 || N < 1 || P < 1 || !inputfile || !outputfile) {
+		usage();
+		exit(0);
+	}
 
 	f = calloc(M * N * P, sizeof(double));
 	u = calloc(M * N * P, sizeof(double));
