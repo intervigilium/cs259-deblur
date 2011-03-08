@@ -23,6 +23,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "papi.h"
 
 /* 3D Gaussian convolution using the method of Alvarez and Mazorra
@@ -240,32 +241,63 @@ static void riciandeconv3(double *u, const double *f, const int Size[3],
 	return;
 }
 
+void usage()
+{
+	printf("deblur [-m|n|p dimensions|-i input|-o output|-b batch id]\n");
+}
+
 int main(int argc, char *argv[])
 {
-	if (argc < 6) {
-		printf("riciandeblur3 M N P inputfile outputfile\r\n");
+    int M, N, P, m, n, p;
+    FILE *inputfile, *outputfile;
+    double *f, *u;
+    unsigned batch_id = 0;
+
+	if (argc < 11) {
+        usage();
 		exit(0);
 	}
-	int M = atoi(argv[1]);
-	int N = atoi(argv[2]);
-	int P = atoi(argv[3]);
-	int p, n, m;
-	FILE *inputfile = fopen(argv[4], "r");
-	FILE *outputfile = fopen(argv[5], "w");
-	double *f, *u;
+
+    while ((c = getopt(argc, argv, "vhm:n:p:i:o:b:")) != -1) {
+        switch (c) {
+        case 'v':
+        case 'h':
+        case '?':
+        default:
+            usage();
+            exit(0);
+        case 'm':
+            M = atoi(optarg);
+            break;
+        case 'n':
+            N = atoi(optarg);
+            break;
+        case 'p':
+            P = atoi(optarg);
+            break;
+        case 'i':
+            inputfile = fopen(optarg, "r");
+            break;
+        case 'o':
+            outputfile = fopen(optarg, "w");
+            break;
+        case 'b':
+            sscanf(optarg, "%u", &batch_id);
+            break;
+        }
+    }
+
+    if (M < 1 || N < 1 || P < 1 || !inputfile || !outputfile) {
+        usage();
+        exit(0);
+    }
+
 	f = calloc(M * N * P, sizeof(double));
 	u = calloc(M * N * P, sizeof(double));
 	fread(f, sizeof(double), M * N * P, inputfile);
 
 	/* Initialize u = f */
 	memcpy(u, f, sizeof(double) * M * N * P);
-
-	/*
-	   for(p = 0; p < P; p++)
-	   for(n = 0; n < N; n++)
-	   for(m = 0; m < M; m++)
-	   f[CENTER]=round(f[CENTER]);
-	 */
 
 	/* Set up parameters */
 	double Ksigma = DEFAULT_KSIGMA;
@@ -279,16 +311,12 @@ int main(int argc, char *argv[])
 	size[2] = P;
 
 	/* Call the main denoising routine */
-	unsigned g_batchid = 0;
-	if (argc == 7) {
-		g_batchid = atoi(argv[6]);
-	}
 	int Events[5];
 	u_long_long papi_values[5];
-	util_start_papi(g_batchid, Events);
+	util_start_papi(batch_id, Events);
 	riciandeconv3(u, f, size, Ksigma, sigma, lambda, numIter, dt);
-	util_stop_papi(g_batchid, papi_values);
-	util_print_papi(g_batchid, papi_values, (g_batchid == 0));
+	util_stop_papi(batch_id, papi_values);
+	util_print_papi(batch_id, papi_values, (batch_id == 0));
 	fwrite(u, sizeof(double), M * N * P, outputfile);
-	printf("Finished\r\n");
+	printf("Finished\n");
 }
