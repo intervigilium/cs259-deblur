@@ -2,6 +2,7 @@
  * Deblur kernel for FPGA implementation
  */
 
+#include <autopilot_tech.h>
 #include <math.h>
 
 #define M 60
@@ -37,8 +38,15 @@ void gaussian_blur(double u[M][N][P], double Ksigma)
 	double nu =
 	    (1.0 + 2.0 * lambda - sqrt(1.0 + 4.0 * lambda)) / (2.0 * lambda);
 	double BoundaryScale = 1.0 / (1.0 - nu);
-	double PostScale = pow(nu / lambda, 3 * GAUSSIAN_NUMSTEPS);
+	double PostScale = 1;
 	int steps, i, j, k;
+	
+	for (steps = 0; steps < 3 * GAUSSIAN_NUMSTEPS; steps++) {
+#pragma AP unroll
+
+		/* PostScale = (nu / lambda) ^ (3*GAUSSIAN_NUMSTEPS) */
+		PostScale *= nu / lambda;
+	}
 
 	for (steps = 0; steps < GAUSSIAN_NUMSTEPS; steps++) {
         /* all of these loops have data dependencies
@@ -116,32 +124,27 @@ void gaussian_blur(double u[M][N][P], double Ksigma)
 		}
 	}
 
-	for (i = 0; i < m; i++) {
-		for (j = 0; j < n; j++) {
-			for (k = 0; k < p; k++) {
+	for (k = 0; k < P; k++) {
+		for (j = 0; j < N; j++) {
+			for (i = 0; i < M; i++) {
+#pragma AP pipeline
+
+#pragma AP unroll factor=2
 				u[i][j][k] *= PostScale;
 			}
 		}
 	}
 }
 
-static void array_copy(double src[M][N][P], double dst[M][N][P])
+void rician_deconv3(double u[M][N][P], const double f[M][N][P], 
+		double g[M][N][P], double conv[M][N][P],
+		double Ksigma, double sigma, double lambda)
 {
-	int i, j, k;
-	for (i = 0; i < M; i++) {
-		for (j = 0; j < N; j++) {
-			for (k = 0; k < P; k++) {
-				dst[i][j][k] = src[i][j][k];
-			}
-		}
-	}
-}
+#pragma AP interface ap_bus port=f pipeline
+#pragma AP interface ap_bus port=u pipeline
+#pragma AP interface ap_memory port=g pipeline
+#pragma AP interface ap_memory port=conv pipeline
 
-void rician_deconv3(double u[M][N][P], const double f[M][N][P], double Ksigma,
-		    double sigma, double lambda)
-{
-	double g[M][N][P];	/* Array storing 1/|grad u| approximation */
-	double conv[M][N][P];
 	double sigma2, gamma, r;
 	double numer, denom;
 	double u_stencil_up, u_stencil_center, u_stencil_down;
@@ -154,20 +157,16 @@ void rician_deconv3(double u[M][N][P], const double f[M][N][P], double Ksigma,
 	gamma = lambda / sigma2;
 
     /*** Main gradient descent loop ***/
-    /* parallelize/pipeline this, no data deps */
 	for (iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
+		/* parallelize/pipeline this, no data deps */
 		/* Approximate g = 1/|grad u| */
 		for (k = 1; k < P - 1; k++) {
 			for (j = 1; j < N - 1; j++) {
+				u_stencil_center = u[0][j][k];
+				u_stencil_down = u[1][j][k];
 				for (i = 1; i < M - 1; i++) {
-					if (i == 1) {
-						u_stencil_up = U_UP;
-						u_stencil_center = U_CENTER;
-					} else {
-						u_stencil_up = u_stencil_center;
-						u_stencil_center =
-						    u_stencil_down;
-					}
+					u_stencil_up = u_stencil_center;
+					u_stencil_center = u_stencil_down;
 					u_stencil_down = U_DOWN;
 					denom =
 					    sqrt(EPSILON +
@@ -185,12 +184,22 @@ void rician_deconv3(double u[M][N][P], const double f[M][N][P], double Ksigma,
 				}
 			}
 		}
-		array_copy(u, conv);
+		for (i = 0; i < M; i++) {
+			for (j = 0; j < N; j++) {
+				for (k = 0; k < P; k++) {
+#pragma AP pipeline
+#pragma AP unroll skip_exit_check factor=2
+					conv[i][j][k] = u[i][j][k];
+				}
+			}
+		}
 		gaussian_blur(conv, Ksigma);
 		/* parallelize/pipeline this, no data deps */
 		for (k = 0; k < P; k++) {
 			for (j = 0; j < N; j++) {
 				for (i = 0; i < M; i++) {
+#pragma AP pipeline
+#pragma AP unroll skip_exit_check factor=2
 					r = conv[i][j][k] * f[i][j][k] / sigma2;
 					numer =
 					    r * 2.38944 + r * (0.950037 + r);
@@ -208,20 +217,15 @@ void rician_deconv3(double u[M][N][P], const double f[M][N][P], double Ksigma,
         /* pipeline? data deps due to u[i][j][k] writeback */
 		for (k = 1; k < P - 1; k++) {
 			for (j = 1; j < N - 1; j++) {
+				u_stencil_center = u[0][j][k];
+				g_stencil_center = g[0][j][k];
+				u_stencil_down = u[1][j][k];
+				g_stencil_down = g[1][j][k];
 				for (i = 1; i < M - 1; i++) {
-					if (i == 1) {
-						u_stencil_up = U_UP;
-						g_stencil_up = G_UP;
-						u_stencil_center = U_CENTER;
-						g_stencil_center = G_CENTER;
-					} else {
-						u_stencil_up = u_stencil_center;
-						g_stencil_up = g_stencil_center;
-						u_stencil_center =
-						    u_stencil_down;
-						g_stencil_center =
-						    g_stencil_down;
-					}
+					u_stencil_up = u_stencil_center;
+					g_stencil_up = g_stencil_center;
+					u_stencil_center = u_stencil_down;
+					g_stencil_center = g_stencil_down;
 					u_stencil_down = U_DOWN;
 					g_stencil_down = G_DOWN;
 
@@ -244,6 +248,5 @@ void rician_deconv3(double u[M][N][P], const double f[M][N][P], double Ksigma,
 				}
 			}
 		}
-		printf("Iteration: %d\n", iteration);
 	}
 }
