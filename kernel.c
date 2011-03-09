@@ -62,7 +62,6 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 				U(0, j, k) *= BoundaryScale;
 				for (i = 1; i < M; i++) {
 					U(i, j, k) += nu * U(i - 1, j, k);
-					u[i][j][k] += nu * u[i - 1][j][k];
 
 					/* Filter upwards */
 					/* i = M-1, moving left in i direction */
@@ -232,7 +231,7 @@ void rician_deconv3(double u[M * N * P], const double f[M * N * P],
 						  g_stencil_down +
 						  U_IN * G_IN +
 						  U_OUT * G_OUT -
-						  gamma * conv[i][j][k]);
+						  gamma * conv[i+j*M+k*N*M]);
 					denom =
 					    1.0 + DT * (G_RIGHT +
 							G_LEFT +
