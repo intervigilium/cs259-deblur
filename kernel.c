@@ -70,8 +70,16 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 	for (steps = 0; steps < GAUSSIAN_NUMSTEPS; steps++) {
 		/* all of these loops have data dependencies
 		 * due to u[i][j][k] writebacks */
+		/* move up by one plane, ie k++ */
 
 		/* downward */
+		for (k = 0; k < P; k++) {
+#pragma AP unroll factor=2
+#pragma AP pipeline
+			for (j = 0; j < N; j++) {
+				U(0, j, k) *= BoundaryScale;
+			}
+		}
 		for (k = 0; k < P; k++) {
 			for (j = 0; j < N; j++) {
 				for (i = 1; i < M; i++) {
@@ -82,6 +90,8 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 
 		/* upward */
 		for (k = 0; k < P; k++) {
+#pragma AP unroll factor=2
+#pragma AP pipeline
 			for (j = 0; j < N; j++) {
 				U(M - 1, j, k) *= BoundaryScale;
 			}
@@ -96,6 +106,8 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 
 		/* right */
 		for (k = 0; k < P; k++) {
+#pragma AP unroll factor=2
+#pragma AP pipeline
 			for (i = 0; i < M; i++) {
 				U(i, 0, k) *= BoundaryScale;
 			}
@@ -110,6 +122,8 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 
 		/* left */
 		for (k = 0; k < P; k++) {
+#pragma AP unroll factor=2
+#pragma AP pipeline
 			for (i = 0; i < M; i++) {
 				U(i, 0, k) *= BoundaryScale;
 			}
@@ -124,6 +138,8 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 
 		/* out */
 		for (j = 0; j < N; j++) {
+#pragma AP unroll factor=2
+#pragma AP pipeline
 			for (i = 0; i < M; i++) {
 				U(i, j, 0) *= BoundaryScale;
 			}
@@ -138,6 +154,8 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 
 		/* in */
 		for (j = 0; j < N; j++) {
+#pragma AP unroll factor=2
+#pragma AP pipeline
 			for (i = 0; i < M; i++) {
 				U(i, j, P - 1) *= BoundaryScale;
 			}
@@ -152,8 +170,8 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 	}
 
 	for (i = 0; i < M * N * P; i++) {
-#pragma AP pipeline
 #pragma AP unroll factor=2
+#pragma AP pipeline
 		u[i] *= PostScale;
 	}
 }
@@ -183,6 +201,8 @@ void rician_deconv3(double u[M * N * P], const double f[M * N * P],
 		/* parallelize/pipeline this, no data deps */
 		/* Approximate g = 1/|grad u| */
 		for (k = 1; k < P - 1; k++) {
+#pragma AP unroll factor=2
+#pragma AP pipeline
 			for (j = 1; j < N - 1; j++) {
 				u_stencil_center = U(0, j, k);
 				u_stencil_down = U(1, j, k);
@@ -235,6 +255,7 @@ void rician_deconv3(double u[M * N * P], const double f[M * N * P],
 				u_stencil_down = U(1, j, k);
 				g_stencil_down = G(1, j, k);
 				for (i = 1; i < M - 1; i++) {
+#pragma AP pipeline enable_flush
 					u_stencil_up = u_stencil_center;
 					g_stencil_up = g_stencil_center;
 					u_stencil_center = u_stencil_down;
