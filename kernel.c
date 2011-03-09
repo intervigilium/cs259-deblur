@@ -141,8 +141,8 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 		for (j = 0; j < N*M; j++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-            int col = k/M;
-            int row = k%M;
+            int col = j/M;
+            int row = j%M;
             U(row,col,0) *= BoundaryScale;
 		}
 		for (k = 1; k < P; k++) {
@@ -157,8 +157,8 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 		for (j = 0; j < N*M; j++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-            int col = k/M;
-            int row = k%M;
+            int col = j/M;
+            int row = j%M;
             U(row,col,P-1) *= BoundaryScale;
         }
 		for (k = P - 2; k >= 0; k--) {
