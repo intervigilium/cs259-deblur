@@ -4,8 +4,8 @@
 
 #include <autopilot_tech.h>
 
-#define uint32 uint32_t
-#define uint64 uint64_t
+#define uint32_t uint32
+#define uint64_t uint64
 
 #define M 60
 #define N 60
