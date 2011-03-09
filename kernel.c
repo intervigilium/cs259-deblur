@@ -207,12 +207,12 @@ void rician_deconv3(double u[M * N * P], const double f[M * N * P],
 		/* parallelize/pipeline this, no data deps */
 		/* Approximate g = 1/|grad u| */
 		for (k = 1; k < P - 1; k++) {
-#pragma AP unroll factor=2
-#pragma AP pipeline
 			for (j = 1; j < N - 1; j++) {
 				u_stencil_center = U(0, j, k);
 				u_stencil_down = U(1, j, k);
 				for (i = 1; i < M - 1; i++) {
+#pragma AP unroll factor=2
+#pragma AP pipeline
 					u_stencil_up = u_stencil_center;
 					u_stencil_center = u_stencil_down;
 					u_stencil_down = U_DOWN;
