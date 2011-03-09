@@ -63,6 +63,7 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 
 	for (steps = 0; steps < 3 * GAUSSIAN_NUMSTEPS; steps++) {
 #pragma AP unroll
+#pragma AP pipeline
 		/* PostScale = (nu / lambda) ^ (3*GAUSSIAN_NUMSTEPS) */
 		PostScale *= nu / lambda;
 	}
@@ -76,14 +77,13 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
         for (k = 0; k < P*N; k++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-            int plane = k/P;
-            int col = k%P;
+            int plane = k/N;
+            int col = k%N;
             U(0,col,plane) *= BoundaryScale;
         }
 		for (k = 0; k < P; k++) {
 			for (j = 0; j < N; j++) {
 				for (i = 1; i < M; i++) {
-#pragma AP pipeline
 					U(i, j, k) += nu * U(i - 1, j, k);
 				}
 			}
@@ -93,14 +93,13 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 		for (k = 0; k < P*N; k++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-            int plane = k/P;
-            int col = k%P;
+            int plane = k/N;
+            int col = k%N;
             U(M-1,col,plane) *= BoundaryScale;
 		}
 		for (k = 0; k < P; k++) {
 			for (j = 0; j < N; j++) {
 				for (i = M - 2; i >= 0; i--) {
-#pragma AP pipeline
 					U(i, j, k) += U(i + 1, j, k);
 				}
 			}
@@ -110,14 +109,13 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 		for (k = 0; k < P*M; k++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-            int plane = k/P;
-            int row = k%P;
+            int plane = k/M;
+            int row = k%M;
             U(row,0,plane) *= BoundaryScale;
 		}
 		for (k = 0; k < P; k++) {
 			for (j = 1; j < N; j++) {
 				for (i = 0; i < M; i++) {
-#pragma AP pipeline
 					U(i, j, k) += nu * U(i, j - 1, k);
 				}
 			}
@@ -127,14 +125,13 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 		for (k = 0; k < P*M; k++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-            int plane = k/P;
-            int row = k%P;
+            int plane = k/M;
+            int row = k%M;
             U(row, N-1, plane) *= BoundaryScale;
 		}
 		for (k = 0; k < P; k++) {
 			for (j = N-2; j < N; j++) {
 				for (i = 0; i < M; i++) {
-#pragma AP pipeline
 					U(i, j, k) += nu * U(i, j + 1, k);
 				}
 			}
@@ -144,14 +141,13 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 		for (j = 0; j < N*M; j++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-            int col = k/N;
-            int row = k%N;
+            int col = k/M;
+            int row = k%M;
             U(row,col,0) *= BoundaryScale;
 		}
 		for (k = 1; k < P; k++) {
 			for (j = 0; j < N; j++) {
 				for (i = 0; i < M; i++) {
-#pragma AP pipeline
 					U(i, j, k) += nu * U(i, j, k - 1);
 				}
 			}
@@ -161,14 +157,13 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 		for (j = 0; j < N*M; j++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-            int col = k/N;
-            int row = k%N;
+            int col = k/M;
+            int row = k%M;
             U(row,col,P-1) *= BoundaryScale;
         }
 		for (k = P - 2; k >= 0; k--) {
 			for (j = 0; j < N; j++) {
 				for (i = 0; i < M; i++) {
-#pragma AP pipeline
 					U(i, j, k) += nu * U(i, j, k + 1);
 				}
 			}
@@ -211,8 +206,6 @@ void rician_deconv3(double u[M * N * P], const double f[M * N * P],
 				u_stencil_center = U(0, j, k);
 				u_stencil_down = U(1, j, k);
 				for (i = 1; i < M - 1; i++) {
-#pragma AP unroll factor=2
-#pragma AP pipeline
 					u_stencil_up = u_stencil_center;
 					u_stencil_center = u_stencil_down;
 					u_stencil_down = U_DOWN;
@@ -261,7 +254,6 @@ void rician_deconv3(double u[M * N * P], const double f[M * N * P],
 				u_stencil_down = U(1, j, k);
 				g_stencil_down = G(1, j, k);
 				for (i = 1; i < M - 1; i++) {
-#pragma AP pipeline enable_flush
 					u_stencil_up = u_stencil_center;
 					g_stencil_up = g_stencil_center;
 					u_stencil_center = u_stencil_down;
