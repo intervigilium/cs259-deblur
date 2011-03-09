@@ -40,7 +40,7 @@ void gaussian_blur(double u[M][N][P], double Ksigma)
 	double BoundaryScale = 1.0 / (1.0 - nu);
 	double PostScale = 1;
 	int steps, i, j, k;
-	
+
 	for (steps = 0; steps < 3 * GAUSSIAN_NUMSTEPS; steps++) {
 #pragma AP unroll
 
@@ -49,8 +49,8 @@ void gaussian_blur(double u[M][N][P], double Ksigma)
 	}
 
 	for (steps = 0; steps < GAUSSIAN_NUMSTEPS; steps++) {
-        /* all of these loops have data dependencies
-         * due to u[i][j][k] writebacks */
+		/* all of these loops have data dependencies
+		 * due to u[i][j][k] writebacks */
 		/* move up by one plane, ie k++ */
 		for (k = 0; k < P; k++) {
 			/* move up by one col, ie j++ */
@@ -136,9 +136,9 @@ void gaussian_blur(double u[M][N][P], double Ksigma)
 	}
 }
 
-void rician_deconv3(double u[M][N][P], const double f[M][N][P], 
-		double g[M][N][P], double conv[M][N][P],
-		double Ksigma, double sigma, double lambda)
+void rician_deconv3(double u[M][N][P], const double f[M][N][P],
+		    double g[M][N][P], double conv[M][N][P],
+		    double Ksigma, double sigma, double lambda)
 {
 #pragma AP interface ap_bus port=f pipeline
 #pragma AP interface ap_bus port=u pipeline
@@ -214,7 +214,7 @@ void rician_deconv3(double u[M][N][P], const double f[M][N][P],
 		}
 		gaussian_blur(conv, Ksigma);
 		/* Update u by a semi-implict step */
-        /* pipeline? data deps due to u[i][j][k] writeback */
+		/* pipeline? data deps due to u[i][j][k] writeback */
 		for (k = 1; k < P - 1; k++) {
 			for (j = 1; j < N - 1; j++) {
 				u_stencil_center = u[0][j][k];
