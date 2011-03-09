@@ -15,24 +15,26 @@
 #define EPSILON2 1.0E-5
 
 #define SQR(x) ((x)*(x))
+#define U(a,b,c) (u[a+b*N+c*M*N])
+#define G(a,b,c) (g[a+b*N+c*M*N])
 
-#define U_CENTER u[i][j][k]
-#define U_LEFT u[i][j-1][k]
-#define U_RIGHT u[i][j+1][k]
-#define U_UP u[i-1][j][k]
-#define U_DOWN u[i+1][j][k]
-#define U_IN u[i][j][k-1]
-#define U_OUT u[i][j][k+1]
+#define U_CENTER U(i,j,k)
+#define U_LEFT U(i,j-1,k)
+#define U_RIGHT U(i,j+1,k)
+#define U_UP U(i-1,j,k)
+#define U_DOWN U(i+1,j,k)
+#define U_IN U(i,j,k-1)
+#define U_OUT U(i,j,k+1)
 
-#define G_CENTER g[i][j][k]
-#define G_LEFT g[i][j-1][k]
-#define G_RIGHT g[i][j+1][k]
-#define G_UP g[i-1][j][k]
-#define G_DOWN g[i+1][j][k]
-#define G_IN g[i][j][k-1]
-#define G_OUT g[i][j][k+1]
+#define G_CENTER G(i,j,k)
+#define G_LEFT G(i,j-1,k)
+#define G_RIGHT G(i,j+1,k)
+#define G_UP G(i-1,j,k)
+#define G_DOWN G(i+1,j,k)
+#define G_IN G(i,j,k-1)
+#define G_OUT G(i,j,k+1)
 
-void gaussian_blur(double u[M][N][P], double Ksigma)
+void gaussian_blur(double u[M * N * P], double Ksigma)
 {
 	double lambda = (Ksigma * Ksigma) / (2.0 * GAUSSIAN_NUMSTEPS);
 	double nu =
@@ -43,7 +45,6 @@ void gaussian_blur(double u[M][N][P], double Ksigma)
 
 	for (steps = 0; steps < 3 * GAUSSIAN_NUMSTEPS; steps++) {
 #pragma AP unroll
-
 		/* PostScale = (nu / lambda) ^ (3*GAUSSIAN_NUMSTEPS) */
 		PostScale *= nu / lambda;
 	}
@@ -52,92 +53,93 @@ void gaussian_blur(double u[M][N][P], double Ksigma)
 		/* all of these loops have data dependencies
 		 * due to u[i][j][k] writebacks */
 		/* move up by one plane, ie k++ */
+
 		for (k = 0; k < P; k++) {
 			/* move up by one col, ie j++ */
 			for (j = 0; j < N; j++) {
 				/* Filter downwards */
 				/* i = 0, moving right in i direction */
-				u[0][j][k] *= BoundaryScale;
+				U(0, j, k) *= BoundaryScale;
 				for (i = 1; i < M; i++) {
+					U(i, j, k) += nu * U(i - 1, j, k);
 					u[i][j][k] += nu * u[i - 1][j][k];
+
+					/* Filter upwards */
+					/* i = M-1, moving left in i direction */
+					U(M - 1, j, k) *= BoundaryScale;
+					for (i = M - 2; i >= 0; i--) {
+						U(i, j, k) += U(i + 1, j, k);
+					}
 				}
 
-				/* Filter upwards */
-				/* i = M-1, moving left in i direction */
-				u[M - 1][j][k] *= BoundaryScale;
-				for (i = M - 2; i >= 0; i--) {
-					u[i][j][k] += u[i + 1][j][k];
-				}
-			}
-
-			/* Filter right */
-			/* j = 0, moving up in j direction */
-			for (i = 0; i < M; i++) {
-				u[i][0][k] *= BoundaryScale;
-			}
-			for (j = 1; j < N; j++) {
+				/* Filter right */
+				/* j = 0, moving up in j direction */
 				for (i = 0; i < M; i++) {
-					u[i][j][k] += nu * u[i][j - 1][k];
+					U(i, 0, k) *= BoundaryScale;
 				}
-			}
+				for (j = 1; j < N; j++) {
+					for (i = 0; i < M; i++) {
+						U(i, j, k) +=
+						    nu * U(i, j - 1, k);
+					}
+				}
 
-			/* Filter left */
-			/* j = N-1, moving down in j direction */
-			for (i = 0; i < M; i++) {
-				u[i][N - 1][k] *= BoundaryScale;
-			}
-			for (j = N - 2; j >= 0; j--) {
+				/* Filter left */
+				/* j = N-1, moving down in j direction */
 				for (i = 0; i < M; i++) {
-					u[i][j][k] += nu * u[i][j + 1][k];
+					U(i, N - 1, k) *= BoundaryScale;
+				}
+				for (j = N - 2; j >= 0; j--) {
+					for (i = 0; i < M; i++) {
+						U(i, j, k) +=
+						    nu * U(i, j + 1, k);
+					}
 				}
 			}
-		}
 
-		/* Filter out */
-		/* k = 0, moving out in k direction */
-		for (j = 0; j < N; j++) {
-			for (i = 0; i < M; i++) {
-				u[i][j][0] *= BoundaryScale;
-			}
-		}
-		for (k = 1; k < P; k++) {
+			/* Filter out */
+			/* k = 0, moving out in k direction */
 			for (j = 0; j < N; j++) {
 				for (i = 0; i < M; i++) {
-					u[i][j][k] += nu * u[i][j][k - 1];
+					U(i, j, 0) *= BoundaryScale;
 				}
 			}
-		}
-
-		/* Filter in */
-		/* k = P-1, moving in in k direction */
-		for (j = 0; j < N; j++) {
-			for (i = 0; i < M; i++) {
-				u[i][j][P - 1] *= BoundaryScale;
+			for (k = 1; k < P; k++) {
+				for (j = 0; j < N; j++) {
+					for (i = 0; i < M; i++) {
+						U(i, j, k) +=
+						    nu * U(i, j, k - 1);
+					}
+				}
 			}
-		}
-		for (k = P - 2; k >= 0; k--) {
+
+			/* Filter in */
+			/* k = P-1, moving in in k direction */
 			for (j = 0; j < N; j++) {
 				for (i = 0; i < M; i++) {
-					u[i][j][k] += nu * u[i][j][k + 1];
+					U(i, j, P - 1) *= BoundaryScale;
+				}
+			}
+			for (k = P - 2; k >= 0; k--) {
+				for (j = 0; j < N; j++) {
+					for (i = 0; i < M; i++) {
+						U(i, j, k) +=
+						    nu * U(i, j, k + 1);
+					}
 				}
 			}
 		}
-	}
 
-	for (k = 0; k < P; k++) {
-		for (j = 0; j < N; j++) {
-			for (i = 0; i < M; i++) {
+		for (i = 0; i < M * N * P; i++) {
 #pragma AP pipeline
-
 #pragma AP unroll factor=2
-				u[i][j][k] *= PostScale;
-			}
+			u[i] *= PostScale;
 		}
 	}
 }
 
-void rician_deconv3(double u[M][N][P], const double f[M][N][P],
-		    double g[M][N][P], double conv[M][N][P],
+void rician_deconv3(double u[M * N * P], const double f[M * N * P],
+		    double g[M * N * P], double conv[M * N * P],
 		    double Ksigma, double sigma, double lambda)
 {
 #pragma AP interface ap_bus port=f pipeline
@@ -162,8 +164,8 @@ void rician_deconv3(double u[M][N][P], const double f[M][N][P],
 		/* Approximate g = 1/|grad u| */
 		for (k = 1; k < P - 1; k++) {
 			for (j = 1; j < N - 1; j++) {
-				u_stencil_center = u[0][j][k];
-				u_stencil_down = u[1][j][k];
+				u_stencil_center = U(0, j, k);
+				u_stencil_down = U(1, j, k);
 				for (i = 1; i < M - 1; i++) {
 					u_stencil_up = u_stencil_center;
 					u_stencil_center = u_stencil_down;
@@ -178,49 +180,39 @@ void rician_deconv3(double u[M][N][P], const double f[M][N][P],
 						     u_stencil_up) +
 						 SQR(u_stencil_center -
 						     u_stencil_down) +
-						 SQR(u_stencil_center - U_IN) +
+						 SQR(u_stencil_center -
+						     U_IN) +
 						 SQR(u_stencil_center - U_OUT));
 					G_CENTER = 1.0 / denom;
 				}
 			}
 		}
-		for (i = 0; i < M; i++) {
-			for (j = 0; j < N; j++) {
-				for (k = 0; k < P; k++) {
+		for (i = 0; i < M * N * P; i++) {
 #pragma AP pipeline
 #pragma AP unroll skip_exit_check factor=2
-					conv[i][j][k] = u[i][j][k];
-				}
-			}
+			conv[i] = u[i];
 		}
-		gaussian_blur(conv, Ksigma);
 		/* parallelize/pipeline this, no data deps */
-		for (k = 0; k < P; k++) {
-			for (j = 0; j < N; j++) {
-				for (i = 0; i < M; i++) {
+		for (i = 0; i < M; i++) {
 #pragma AP pipeline
 #pragma AP unroll skip_exit_check factor=2
-					r = conv[i][j][k] * f[i][j][k] / sigma2;
-					numer =
-					    r * 2.38944 + r * (0.950037 + r);
-					denom =
-					    4.65314 + r * (2.57541 +
-							   r * (2.57541 +
-								r * (1.48937 +
-								     r)));
-					conv[i][j][k] -= f[i][j][k] * r;
-				}
-			}
+			r = conv[i] * f[i] / sigma2;
+			numer = r * 2.38944 + r * (0.950037 + r);
+			denom =
+			    4.65314 + r * (2.57541 +
+					   r * (2.57541 + r * (1.48937 + r)));
+			conv[i] -= f[i] * r;
 		}
+
 		gaussian_blur(conv, Ksigma);
 		/* Update u by a semi-implict step */
 		/* pipeline? data deps due to u[i][j][k] writeback */
 		for (k = 1; k < P - 1; k++) {
 			for (j = 1; j < N - 1; j++) {
-				u_stencil_center = u[0][j][k];
-				g_stencil_center = g[0][j][k];
-				u_stencil_down = u[1][j][k];
-				g_stencil_down = g[1][j][k];
+				u_stencil_center = U(0, j, k);
+				g_stencil_center = U(0, j, k);
+				u_stencil_down = U(1, j, k);
+				g_stencil_down = G(1, j, k);
 				for (i = 1; i < M - 1; i++) {
 					u_stencil_up = u_stencil_center;
 					g_stencil_up = g_stencil_center;
@@ -234,16 +226,19 @@ void rician_deconv3(double u[M][N][P], const double f[M][N][P],
 					    DT * (U_RIGHT * G_RIGHT +
 						  U_LEFT * G_LEFT +
 						  U_RIGHT * G_RIGHT +
-						  u_stencil_up * g_stencil_up +
+						  u_stencil_up *
+						  g_stencil_up +
 						  u_stencil_down *
-						  g_stencil_down + U_IN * G_IN +
+						  g_stencil_down +
+						  U_IN * G_IN +
 						  U_OUT * G_OUT -
 						  gamma * conv[i][j][k]);
 					denom =
-					    1.0 + DT * (G_RIGHT + G_LEFT +
+					    1.0 + DT * (G_RIGHT +
+							G_LEFT +
 							g_stencil_down +
-							g_stencil_up + G_IN +
-							G_OUT);
+							g_stencil_up +
+							G_IN + G_OUT);
 					U_CENTER = numer / denom;
 				}
 			}
