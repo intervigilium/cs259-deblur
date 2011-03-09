@@ -33,7 +33,6 @@
 
 void gaussian_blur(double u[M][N][P], double Ksigma)
 {
-	double *uPtr, *uCopy, *uEnd;
 	double lambda = (Ksigma * Ksigma) / (2.0 * GAUSSIAN_NUMSTEPS);
 	double nu =
 	    (1.0 + 2.0 * lambda - sqrt(1.0 + 4.0 * lambda)) / (2.0 * lambda);
@@ -46,14 +45,12 @@ void gaussian_blur(double u[M][N][P], double Ksigma)
          * due to u[i][j][k] writebacks */
 		/* move up by one plane, ie k++ */
 		for (k = 0; k < P; k++) {
-			uCopy = uPtr;
 			/* move up by one col, ie j++ */
 			for (j = 0; j < N; j++) {
 				/* Filter downwards */
 				/* i = 0, moving right in i direction */
 				u[0][j][k] *= BoundaryScale;
 				for (i = 1; i < M; i++) {
-					uPtr[0] += nu * uPtr[-1];
 					u[i][j][k] += nu * u[i - 1][j][k];
 				}
 
