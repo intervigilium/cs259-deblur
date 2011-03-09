@@ -63,7 +63,6 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 
 	for (steps = 0; steps < 3 * GAUSSIAN_NUMSTEPS; steps++) {
 #pragma AP unroll
-#pragma AP pipeline
 		/* PostScale = (nu / lambda) ^ (3*GAUSSIAN_NUMSTEPS) */
 		PostScale *= nu / lambda;
 	}
