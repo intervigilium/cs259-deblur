@@ -1,4 +1,4 @@
-<project xmlns="com.autoesl.autopilot.project" top="rician_deconv3" projectType="C/C++" name="autopilot">
+<project xmlns="com.autoesl.autopilot.project" name="autopilot" top="rician_deconv3" projectType="C/C++">
     <files>
         <file name="autopilot/src/kernel.c" sc="0" tb="false" cflags=""/>
     </files>
