@@ -81,14 +81,12 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
             U(0,col,plane) *= BoundaryScale;
         }
 		for (k = 0; k < P; k++) {
-            for (i = 1; i < M; i++) {
-                for (j = 0; j < N; j++) {
-#pragma AP unroll factor 2
-#pragma AP pipeline
-                    U(i,j,k) += nu * U(i-1,j,k);
-                }
-            }
-        }
+			for (j = 0; j < N; j++) {
+				for (i = 1; i < M; i++) {
+					U(i, j, k) += nu * U(i - 1, j, k);
+				}
+			}
+		}
 
 		/* upward */
 		for (k = 0; k < P*N; k++) {
@@ -99,11 +97,9 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
             U(M-1,col,plane) *= BoundaryScale;
 		}
 		for (k = 0; k < P; k++) {
-            for (i = M-2; i >= 0; i++) {
-                for (j = 0; j < N; j++) {
-#pragma AP unroll factor=2
-#pragma AP pipeline
-                    U(i,j,k) += nu * U(i+1,j,k);
+			for (j = 0; j < N; j++) {
+				for (i = M - 2; i >= 0; i--) {
+					U(i, j, k) += U(i + 1, j, k);
 				}
 			}
 		}
@@ -119,8 +115,6 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 		for (k = 0; k < P; k++) {
 			for (j = 1; j < N; j++) {
 				for (i = 0; i < M; i++) {
-#pragma AP unroll factor=2
-#pragma AP pipeline
 					U(i, j, k) += nu * U(i, j - 1, k);
 				}
 			}
@@ -137,8 +131,6 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 		for (k = 0; k < P; k++) {
 			for (j = N-2; j < N; j++) {
 				for (i = 0; i < M; i++) {
-#pragma AP unroll factor=2
-#pragma AP pipeline
 					U(i, j, k) += nu * U(i, j + 1, k);
 				}
 			}
