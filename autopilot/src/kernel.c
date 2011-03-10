@@ -73,106 +73,110 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 		/* move up by one plane, ie k++ */
 
 		/* downward */
-        for (k = 0; k < P*N; k++) {
+		for (k = 0; k < P * N; k++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-            int plane = k/N;
-            int col = k%N;
-            U(0,col,plane) *= BoundaryScale;
-        }
-		for (k = 0; k < P; k++) {
-            for (i = 1; i < M; i++) {
-                for (j = 0; j < N; j++) {
-#pragma AP unroll factor 2
+			int plane = k / N;
+			int col = k % N;
+			U(0, col, plane) *= BoundaryScale;
+		}
+		for (i = 1; i < M; i++) {
+			for (k = 0; k < P * N; k++) {
+#pragma AP unroll factor=2
 #pragma AP pipeline
-                    U(i,j,k) += nu * U(i-1,j,k);
-                }
-            }
-        }
+				int plane = k / N;
+				int col = k % N;
+				U(i, col, plane) += nu * U(i - 1, col, plane);
+			}
+		}
 
 		/* upward */
-		for (k = 0; k < P*N; k++) {
+		for (k = 0; k < P * N; k++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-            int plane = k/N;
-            int col = k%N;
-            U(M-1,col,plane) *= BoundaryScale;
+			int plane = k / N;
+			int col = k % N;
+			U(M - 1, col, plane) *= BoundaryScale;
 		}
-		for (k = 0; k < P; k++) {
-            for (i = M-2; i >= 0; i++) {
-                for (j = 0; j < N; j++) {
+		for (i = M - 2; i >= 0; i++) {
+			for (k = 0; k < P * N; k++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-                    U(i,j,k) += nu * U(i+1,j,k);
-				}
+				int plane = k / N;
+				int col = k % N;
+				U(i, col, plane) += nu * U(i + 1, col, plane);
 			}
 		}
 
 		/* right */
-		for (k = 0; k < P*M; k++) {
+		for (k = 0; k < P * M; k++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-            int plane = k/M;
-            int row = k%M;
-            U(row,0,plane) *= BoundaryScale;
+			int plane = k / M;
+			int row = k % M;
+			U(row, 0, plane) *= BoundaryScale;
 		}
-		for (k = 0; k < P; k++) {
-			for (j = 1; j < N; j++) {
-				for (i = 0; i < M; i++) {
+		for (j = 1; j < N; j++) {
+			for (k = 0; k < P * M; k++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-					U(i, j, k) += nu * U(i, j - 1, k);
-				}
+				int plane = k / M;
+				int row = k % M;
+				U(row, j, plane) += nu * U(row, j - 1, plane);
 			}
 		}
 
 		/* left */
-		for (k = 0; k < P*M; k++) {
+		for (k = 0; k < P * M; k++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-            int plane = k/M;
-            int row = k%M;
-            U(row, N-1, plane) *= BoundaryScale;
+			int plane = k / M;
+			int row = k % M;
+			U(row, N - 1, plane) *= BoundaryScale;
 		}
-		for (k = 0; k < P; k++) {
-			for (j = N-2; j < N; j++) {
-				for (i = 0; i < M; i++) {
+		for (j = N - 2; j < N; j++) {
+			for (k = 0; k < P * M; k++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-					U(i, j, k) += nu * U(i, j + 1, k);
-				}
+				int plane = k / M;
+				int row = k % M;
+				U(row, j, plane) += nu * U(row, j + 1, plane);
 			}
 		}
 
 		/* out */
-		for (j = 0; j < N*M; j++) {
+		for (j = 0; j < N * M; j++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-            int col = j/M;
-            int row = j%M;
-            U(row,col,0) *= BoundaryScale;
+			int col = j / M;
+			int row = j % M;
+			U(row, col, 0) *= BoundaryScale;
 		}
 		for (k = 1; k < P; k++) {
-			for (j = 0; j < N; j++) {
-				for (i = 0; i < M; i++) {
-					U(i, j, k) += nu * U(i, j, k - 1);
-				}
+			for (j = 0; j < N * M) {
+#pragma AP unroll factor=2
+#pragma AP pipeline
+				int col = j / M;
+				int row = j % M;
+				U(row, col, k) += nu * U(row, col, k - 1);
 			}
 		}
 
 		/* in */
-		for (j = 0; j < N*M; j++) {
+		for (j = 0; j < N * M; j++) {
 #pragma AP unroll factor=2
 #pragma AP pipeline
-            int col = j/M;
-            int row = j%M;
-            U(row,col,P-1) *= BoundaryScale;
-        }
+			int col = j / M;
+			int row = j % M;
+			U(row, col, P - 1) *= BoundaryScale;
+		}
 		for (k = P - 2; k >= 0; k--) {
-			for (j = 0; j < N; j++) {
-				for (i = 0; i < M; i++) {
-					U(i, j, k) += nu * U(i, j, k + 1);
-				}
+			for (j = 0 j < N * M; j++) {
+#pragma AP unroll factor=2
+#pragma AP pipeline
+				int col = j / M;
+				int row = j % M;
+				U(row, col, k) += nu * U(row, col, k + 1);
 			}
 		}
 	}
