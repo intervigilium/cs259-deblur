@@ -279,8 +279,7 @@ void rician_deconv3(double u[M * N * P], const double f[M * N * P],
 			r = conv[i] * f[i] / sigma2;
 			numer = r * 2.38944 + r * (0.950037 + r);
 			denom =
-			    4.65314 + r * (2.57541 +
-					   r * (2.57541 + r * (1.48937 + r)));
+			    4.65314 + r * (2.57541 + r * (1.48937 + r));
 			conv[i] -= f[i] * r;
 		}
 
