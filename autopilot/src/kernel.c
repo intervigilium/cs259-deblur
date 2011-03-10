@@ -52,6 +52,15 @@ inline double q3_sqrt(double num)
 	return num * y;
 }
 
+inline void array_copy(const double src[M*N*P], double dst[M*N*P])
+{
+	int i;
+	for (i = 0; i < M*N*P; i++) {
+#pragma AP pipeline
+		dst[i] = src[i];
+	}
+}
+
 void gaussian_blur(double u[M * N * P], double Ksigma)
 {
 	double lambda = (Ksigma * Ksigma) / (2.0 * GAUSSIAN_NUMSTEPS);
@@ -59,6 +68,8 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 	    (1.0 + 2.0 * lambda - q3_sqrt(1.0 + 4.0 * lambda)) / (2.0 * lambda);
 	double BoundaryScale = 1.0 / (1.0 - nu);
 	double PostScale = 1;
+	double m_cache[M], n_cache[N], p_cache[P];
+	double r;
 	int steps, i, j, k;
 
 	for (steps = 0; steps < 3 * GAUSSIAN_NUMSTEPS; steps++) {
@@ -80,9 +91,16 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
             U(0,col,plane) *= BoundaryScale;
         }
 		for (k = 0; k < P; k++) {
-			for (j = 0; j < N; j++) {
-				for (i = 1; i < M; i++) {
-					U(i, j, k) += nu * U(i - 1, j, k);
+			for (j = 0; i < N; j++) {
+#pragma AP pipeline
+				n_cache[j] = U(0, j, k);
+			}
+			for (i = 1; i < M; i++) {
+				for (j = 0; j < N; j++) {
+#pragma AP pipeline
+					r = U(i,j,k) + nu * n_cache[j];
+					U(i,j,k) = r;
+					n_cache[i] = r;
 				}
 			}
 		}
@@ -96,8 +114,15 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
 		}
 		for (k = 0; k < P; k++) {
 			for (j = 0; j < N; j++) {
-				for (i = M - 2; i >= 0; i--) {
-					U(i, j, k) += U(i + 1, j, k);
+#pragma AP pipeline
+				n_cache[j] = U(M-1,j,k);
+			}
+			for (i = M-2; i >= 0; i--) {
+				for (j = 0; j < N; j++) {
+#pragma AP pipeline
+					r = U(i,j,k) + nu * n_cache[j];
+					U(i,j,k) = r;
+					n_cache[j] = r;
 				}
 			}
 		}
@@ -109,10 +134,17 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
             int row = k%M;
             U(row,0,plane) *= BoundaryScale;
 		}
-		for (k = 0; k < P; k++) {
+		for (i = 0; i < M; i++) {
+			for (k = 0; k < P; k++) {
+#pragma AP pipeline
+				p_cache[k] = U(i,0,k);
+			}
 			for (j = 1; j < N; j++) {
-				for (i = 0; i < M; i++) {
-					U(i, j, k) += nu * U(i, j - 1, k);
+				for (k = 0; k < P; k++) {
+#pragma AP pipeline
+					r = U(i,j,k) + nu * p_cache[k];
+					U(i,j,k) = r;
+					p_cache[k] = r;
 				}
 			}
 		}
@@ -124,10 +156,17 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
             int row = k%M;
             U(row, N-1, plane) *= BoundaryScale;
 		}
-		for (k = 0; k < P; k++) {
+		for (i = 0; i < M; i++) {
+			for (k = 0; k < P; k++) {
+#pragma AP pipeline
+				p_cache[k] = U(i,N-1,k);
+			}
 			for (j = N-2; j < N; j++) {
-				for (i = 0; i < M; i++) {
-					U(i, j, k) += nu * U(i, j + 1, k);
+				for (k = 0; k < P; k++) {
+#pragma AP pipeline
+					r = U(i,j,k) + nu * p_cache[k];
+					U(i,j,k) = r;
+					p_cache[k] = r;
 				}
 			}
 		}
@@ -139,10 +178,17 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
             int row = j%M;
             U(row,col,0) *= BoundaryScale;
 		}
-		for (k = 1; k < P; k++) {
-			for (j = 0; j < N; j++) {
+		for (j = 0; i < N; j++) {
+			for (i = 0; i < M; i++) {
+#pragma AP pipeline
+				m_cache[i] = U(i,j,0);
+			}
+			for (k = 1; k < P; k++) {
 				for (i = 0; i < M; i++) {
-					U(i, j, k) += nu * U(i, j, k - 1);
+#pragma AP pipeline
+					r = U(i,j,k) + nu * m_cache[i];
+					U(i,j,k) = r;
+					m_cache[i] = r;
 				}
 			}
 		}
@@ -154,10 +200,17 @@ void gaussian_blur(double u[M * N * P], double Ksigma)
             int row = j%M;
             U(row,col,P-1) *= BoundaryScale;
         }
-		for (k = P - 2; k >= 0; k--) {
-			for (j = 0; j < N; j++) {
+		for (j = 0; j < N; j++) {
+			for (i = 0; i < M; i++) {
+#pragma AP pipeline
+				m_cache[i] = U(i,j,P-1);
+			}
+			for (k = P - 2; k >= 0; k--) {
 				for (i = 0; i < M; i++) {
-					U(i, j, k) += nu * U(i, j, k + 1);
+#pragma AP pipeline
+					r = U(i,j,k) + nu * m_cache[i];
+					U(i,j,k) = r;
+					m_cache[i] = r;
 				}
 			}
 		}
@@ -219,10 +272,7 @@ void rician_deconv3(double u[M * N * P], const double f[M * N * P],
 				}
 			}
 		}
-		for (i = 0; i < M * N * P; i++) {
-#pragma AP pipeline
-			conv[i] = u[i];
-		}
+		array_copy(u, conv);
 		/* parallelize/pipeline this, no data deps */
 		for (i = 0; i < M; i++) {
 #pragma AP pipeline
